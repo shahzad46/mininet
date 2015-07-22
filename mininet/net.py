@@ -108,7 +108,7 @@ from mininet.util import ( quietRun, fixLimits, numCores, ensureRoot,
 from mininet.term import cleanUpScreens, makeTerms
 
 # Mininet version: should be consistent with README and LICENSE
-VERSION = "2.2.1d2"
+VERSION = "2.2.1"
 
 class Mininet( object ):
     "Network emulation with hosts spawned in network namespaces."
@@ -436,6 +436,8 @@ class Mininet( object ):
             options.setdefault( 'port1', port1 )
         if port2 is not None:
             options.setdefault( 'port2', port2 )
+        if self.intf is not None:
+            options.setdefault( 'intf', self.intf )
         # Set default MAC - this should probably be in Link
         options.setdefault( 'addr1', self.randMac() )
         options.setdefault( 'addr2', self.randMac() )

@@ -3,7 +3,7 @@ Mininet: Rapid Prototyping for Software Defined Networks
 
 *The best way to emulate almost any network on your laptop!*
 
-Mininet 2.2.1d2
+Mininet 2.2.1
 
 ### What is Mininet?
 
@@ -83,6 +83,8 @@ This is primarily a performance improvement and bug fix release.
   significantly better performance than veth pairs, for certain
   configurations.
 
+- You can now easily install Mininet on a Raspberry Pi ;-)
+
 - Additional information for this release and previous releases
   may be found in the release notes on docs.mininet.org
 
@@ -108,6 +110,8 @@ Mininet mailing list, `mininet-discuss` at:
 
 ### Join Us
 
+Thanks again to all of the Mininet contributors!
+
 Mininet is an open source project and is currently hosted
 at <https://github.com/mininet>.  You are encouraged to download
 the code, examine it, modify it, and submit bug reports, bug fixes,
@@ -121,12 +125,5 @@ hard work that Mininet continues to grow and improve.
 Best wishes, and we look forward to seeing what you can do with
 Mininet to change the networking world!
 
-The Mininet Core Team:
-
-* Bob Lantz
-* Brian O'Connor
-* Cody Burkard
-
-Thanks again to all of the Mininet contributors, particularly Gregory
-Gee for his work on MiniEdit.
-
+Bob Lantz
+Mininet Core Team

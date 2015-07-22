@@ -168,6 +168,8 @@ class Node( object ):
 
     def mountPrivateDirs( self ):
         "mount private directories"
+        # Avoid expanding a string into a list of chars
+        assert not isinstance( self.privateDirs, basestring )
         for directory in self.privateDirs:
             if isinstance( directory, tuple ):
                 # mount given private directory
@@ -901,6 +903,12 @@ class Switch( Node ):
         debug( 'Assuming', repr( self ), 'is connected to a controller\n' )
         return True
 
+    def stop( self, deleteIntfs=True ):
+        """Stop switch
+           deleteIntfs: delete interfaces? (True)"""
+        if deleteIntfs:
+            self.deleteIntfs()
+
     def __repr__( self ):
         "More informative string representation"
         intfs = ( ','.join( [ '%s:%s' % ( i.name, i.IP() )
@@ -1137,7 +1145,7 @@ class OVSSwitch( Switch ):
         if self.protocols and not self.isOldOVS():
             opts += ' protocols=%s' % self.protocols
         if self.stp and self.failMode == 'standalone':
-            opts += ' stp_enable=true' % self
+            opts += ' stp_enable=true'
         return opts
 
     def start( self, controllers ):
@@ -1511,3 +1519,7 @@ def DefaultController( name, controllers=DefaultControllers, **kwargs ):
     if not controller:
         raise Exception( 'Could not find a default OpenFlow controller' )
     return controller( name, **kwargs )
+
+def NullController( *_args, **_kwargs ):
+    "Nonexistent controller - simply returns None"
+    return None
