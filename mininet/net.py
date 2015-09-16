@@ -664,7 +664,7 @@ class Mininet( object ):
         sent, received = int( m.group( 1 ) ), int( m.group( 2 ) )
         return sent, received
 
-    def ping( self, hosts=None, timeout=None ):
+    def ping( self, IPv='4', prefix='1000::', hosts=None, timeout=None ):
         """Ping between all specified hosts.
            hosts: list of hosts
            timeout: time to wait for a response, as string
@@ -684,8 +684,12 @@ class Mininet( object ):
                     if timeout:
                         opts = '-W %s' % timeout
                     if dest.intfs:
-                        result = node.cmd( 'ping -c1 %s %s' %
-                                           (opts, dest.IP()) )
+                        if IPv == '4':
+                            result = node.cmd( 'ping -c1 %s %s' %
+                                               (opts, dest.IP()) )
+                        else:
+                            result = node.cmd( 'ping6 -c1 %s %s%s' %
+                                               (opts, prefix, node.name[1:]))
                         sent, received = self._parsePing( result )
                     else:
                         sent, received = 0, 0
@@ -776,6 +780,11 @@ class Mininet( object ):
         """Ping between all hosts.
            returns: ploss packet loss percentage"""
         return self.ping( timeout=timeout )
+
+    def pingAll6( self, timeout=None ):
+        """Ping between all IPv6 hosts.
+            returns: ploss packet loss percentage"""
+        return self.ping( IPv='6', timeout=timeout )
 
     def pingPair( self ):
         """Ping between first two hosts, useful for testing.
