@@ -664,7 +664,7 @@ class Mininet( object ):
         sent, received = int( m.group( 1 ) ), int( m.group( 2 ) )
         return sent, received
 
-    def ping( self, IPv='4', prefix='1000::', hosts=None, timeout=None ):
+    def ping( self, ipv6=True, prefix='1000::', hosts=None, timeout=None ):
         """Ping between all specified hosts.
            hosts: list of hosts
            timeout: time to wait for a response, as string
@@ -684,12 +684,12 @@ class Mininet( object ):
                     if timeout:
                         opts = '-W %s' % timeout
                     if dest.intfs:
-                        if IPv == '4':
+                        if ipv6:
+                            result = node.cmd( 'ping6 -c1 %s -I %s %s' %
+                                (opts, node.intfs.get(0), dest.params.get('v6Addr', [])[:-3]))
+                        else:
                             result = node.cmd( 'ping -c1 %s %s' %
                                                (opts, dest.IP()) )
-                        else:
-                            result = node.cmd( 'ping6 -c1 %s %s%s' %
-                                               (opts, prefix, node.name[1:]))
                         sent, received = self._parsePing( result )
                     else:
                         sent, received = 0, 0
