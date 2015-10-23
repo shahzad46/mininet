@@ -664,7 +664,7 @@ class Mininet( object ):
         sent, received = int( m.group( 1 ) ), int( m.group( 2 ) )
         return sent, received
 
-    def ping( self, ipv6=True, prefix='1000::', hosts=None, timeout=None ):
+    def ping( self, ipv6=False, hosts=None, timeout=None ):
         """Ping between all specified hosts.
            hosts: list of hosts
            timeout: time to wait for a response, as string
@@ -784,7 +784,7 @@ class Mininet( object ):
     def pingAll6( self, timeout=None ):
         """Ping between all IPv6 hosts.
             returns: ploss packet loss percentage"""
-        return self.ping( IPv='6', timeout=timeout )
+        return self.ping( ipv6=True, timeout=timeout )
 
     def pingPair( self ):
         """Ping between first two hosts, useful for testing.
