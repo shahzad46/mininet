@@ -146,6 +146,9 @@ class Intf( object ):
 
     def rename( self, newname ):
         "Rename interface"
+        if self.node and self.name in self.node.nameToIntf:
+            # rename intf in node's nameToIntf
+            self.node.nameToIntf[newname] = self.node.nameToIntf.pop(self.name)
         self.ifconfig( 'down' )
         result = self.cmd( 'ip link set', self.name, 'name', newname )
         self.name = newname
@@ -164,7 +167,7 @@ class Intf( object ):
            method: config method name
            param: arg=value (ignore if value=None)
            value may also be list or dict"""
-        name, value = param.items()[ 0 ]
+        name, value = list( param.items() )[ 0 ]
         f = getattr( self, method, None )
         if not f or value is None:
             return
@@ -288,18 +291,14 @@ class TCIntf( Intf ):
                    loss=None, max_queue_size=None ):
         "Internal method: return tc commands for delay and loss"
         cmds = []
-        if delay and delay < 0:
-            error( 'Negative delay', delay, '\n' )
-        elif jitter and jitter < 0:
-            error( 'Negative jitter', jitter, '\n' )
-        elif loss and ( loss < 0 or loss > 100 ):
+        if loss and ( loss < 0 or loss > 100 ):
             error( 'Bad loss percentage', loss, '%%\n' )
         else:
             # Delay/jitter/loss/max queue size
             netemargs = '%s%s%s%s' % (
                 'delay %s ' % delay if delay is not None else '',
                 '%s ' % jitter if jitter is not None else '',
-                'loss %.5f ' % loss if loss is not None else '',
+                'loss %.5f ' % loss if (loss is not None and loss > 0) else '',
                 'limit %d' % max_queue_size if max_queue_size is not None
                 else '' )
             if netemargs:
@@ -411,7 +410,7 @@ class Link( object ):
     def __init__( self, node1, node2, port1=None, port2=None,
                   intfName1=None, intfName2=None, addr1=None, addr2=None,
                   intf=Intf, cls1=None, cls2=None, params1=None,
-                  params2=None, fast=True ):
+                  params2=None, fast=True, **params ):
         """Create veth link to another node, making two new interfaces.
            node1: first node
            node2: second node
@@ -421,18 +420,15 @@ class Link( object ):
            cls1, cls2: optional interface-specific constructors
            intfName1: node1 interface name (optional)
            intfName2: node2  interface name (optional)
-           params1: parameters for interface 1
-           params2: parameters for interface 2"""
+           params1: parameters for interface 1 (optional)
+           params2: parameters for interface 2 (optional)
+           **params: additional parameters for both interfaces"""
+
         # This is a bit awkward; it seems that having everything in
         # params is more orthogonal, but being able to specify
         # in-line arguments is more convenient! So we support both.
-        if params1 is None:
-            params1 = {}
-        if params2 is None:
-            params2 = {}
-        # Allow passing in params1=params2
-        if params2 is params1:
-            params2 = dict( params1 )
+        params1 = dict( params1 ) if params1 else {}
+        params2 = dict( params2 ) if params2 else {}
         if port1 is not None:
             params1[ 'port' ] = port1
         if port2 is not None:
@@ -445,6 +441,10 @@ class Link( object ):
             intfName1 = self.intfName( node1, params1[ 'port' ] )
         if not intfName2:
             intfName2 = self.intfName( node2, params2[ 'port' ] )
+
+        # Update with remaining parameter list
+        params1.update( params )
+        params2.update( params )
 
         self.fast = fast
         if fast:
@@ -467,6 +467,7 @@ class Link( object ):
 
         # All we are is dust in the wind, and our two interfaces
         self.intf1, self.intf2 = intf1, intf2
+
     # pylint: enable=too-many-branches
 
     @staticmethod
@@ -552,17 +553,11 @@ class OVSLink( Link ):
 
 
 class TCLink( Link ):
-    "Link with symmetric TC interfaces configured via opts"
-    def __init__( self, node1, node2, port1=None, port2=None,
-                  intfName1=None, intfName2=None,
-                  addr1=None, addr2=None, **params ):
-        Link.__init__( self, node1, node2, port1=port1, port2=port2,
-                       intfName1=intfName1, intfName2=intfName2,
-                       cls1=TCIntf,
-                       cls2=TCIntf,
-                       addr1=addr1, addr2=addr2,
-                       params1=params,
-                       params2=params )
+    "Link with TC interfaces"
+    def __init__( self, *args, **kwargs):
+        kwargs.setdefault( 'cls1', TCIntf )
+        kwargs.setdefault( 'cls2', TCIntf )
+        Link.__init__( self, *args, **kwargs)
 
 
 class TCULink( TCLink ):

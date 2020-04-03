@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Mininet install script for Ubuntu (and Debian Wheezy+)
-# Brandon Heller (brandonh@stanford.edu)
+# Mininet install script for Ubuntu and Debian
+# Original author: Brandon Heller
 
 # Fail on error
 set -e
@@ -102,6 +102,26 @@ function version_ge {
     [ "$1" == "$latest" ]
 }
 
+# Attempt to detect Python version
+PYTHON=${PYTHON:-python}
+PRINTVERSION='import sys; print(sys.version_info)'
+PYTHON_VERSION=unknown
+for python in $PYTHON python2 python3; do
+    if $python -c "$PRINTVERSION" |& grep 'major=2'; then
+        PYTHON=$python; PYTHON_VERSION=2; PYPKG=python
+        break
+    elif $python -c "$PRINTVERSION" |& grep 'major=3'; then
+        PYTHON=$python; PYTHON_VERSION=3; PYPKG=python3
+        break
+    fi
+done
+if [ "$PYTHON_VERSION" == unknown ]; then
+    echo "Can't find a working python command ('$PYTHON' doesn't work.)"
+    echo "You may wish to export PYTHON or install a working 'python'."
+    exit 1
+fi
+
+echo "Detected Python (${PYTHON}) version ${PYTHON_VERSION}"
 
 # Kernel Deb pkg to be removed:
 KERNEL_IMAGE_OLD=linux-image-2.6.26-33-generic
@@ -145,19 +165,21 @@ function mn_deps {
         $install gcc make socat psmisc xterm openssh-clients iperf \
             iproute telnet python-setuptools libcgroup-tools \
             ethtool help2man pyflakes pylint python-pep8 python-pexpect
-	elif [ "$DIST" = "SUSE LINUX"  ]; then
+    elif [ "$DIST" = "SUSE LINUX"  ]; then
 		$install gcc make socat psmisc xterm openssh iperf \
-			iproute telnet python-setuptools libcgroup-tools \
-			ethtool help2man python-pyflakes python3-pylint python-pep8 python-pexpect
-    else
-        $install gcc make socat psmisc xterm ssh iperf iproute telnet \
-            python-setuptools cgroup-bin ethtool help2man \
-            pyflakes pylint pep8 python-pexpect
+			iproute telnet ${PYPKG}-setuptools libcgroup-tools \
+			ethtool help2man python-pyflakes python3-pylint \
+                        python-pep8 ${PYPKG}-pexpect ${PYPKG}-tk
+    else  # Debian/Ubuntu
+        $install gcc make socat psmisc xterm ssh iperf telnet \
+                 cgroup-bin ethtool help2man pyflakes pylint pep8 \
+                 ${PYPKG}-setuptools ${PYPKG}-pexpect ${PYPKG}-tk
+        $install iproute2 || $install iproute
     fi
 
     echo "Installing Mininet core"
     pushd $MININET_DIR/mininet
-    sudo make install
+    sudo PYTHON=${PYTHON} make install
     popd
 }
 
@@ -204,10 +226,14 @@ function of {
 function of13 {
     echo "Installing OpenFlow 1.3 soft switch implementation..."
     cd $BUILD_DIR/
-    $install  git-core autoconf automake autotools-dev pkg-config \
-        make gcc g++ libtool libc6-dev cmake libpcap-dev libxerces-c2-dev  \
+    $install git-core autoconf automake autotools-dev pkg-config \
+        make gcc g++ libtool libc6-dev cmake libpcap-dev  \
         unzip libpcre3-dev flex bison libboost-dev
-
+    if [ "$DIST" = "Ubuntu" ] && version_le $RELEASE 16.04; then
+        $install libxerces-c2-dev
+    else
+        $install libxerces-c-dev
+    fi
     if [ ! -d "ofsoftswitch13" ]; then
         git clone https://github.com/CPqD/ofsoftswitch13.git
         if [[ -n "$OF13_SWITCH_REV" ]]; then
@@ -218,24 +244,17 @@ function of13 {
     fi
 
     # Install netbee
-    if [ "$DIST" = "Ubuntu" ] && version_ge $RELEASE 14.04; then
-        NBEESRC="nbeesrc-feb-24-2015"
-        NBEEDIR="netbee"
-    else
-        NBEESRC="nbeesrc-jan-10-2013"
-        NBEEDIR="nbeesrc-jan-10-2013"
+    if [ ! -d "netbee" ]; then
+        git clone https://github.com/netgroup-polito/netbee.git
     fi
-
-    NBEEURL=${NBEEURL:-http://www.nbee.org/download/}
-    wget -nc ${NBEEURL}${NBEESRC}.zip
-    unzip ${NBEESRC}.zip
-    cd ${NBEEDIR}/src
+    cd netbee/src
     cmake .
     make
-    cd $BUILD_DIR/
-    sudo cp ${NBEEDIR}/bin/libn*.so /usr/local/lib
+
+    cd $BUILD_DIR
+    sudo cp netbee/bin/libn*.so /usr/local/lib
     sudo ldconfig
-    sudo cp -R ${NBEEDIR}/include/ /usr/
+    sudo cp -R netbee/include/ /usr/
 
     # Resume the install:
     cd $BUILD_DIR/ofsoftswitch13
@@ -402,7 +421,7 @@ function ovs {
         # Switch can run on its own, but
         # Mininet should control the controller
         # This appears to only be an issue on Ubuntu/Debian
-        if sudo service $OVSC stop; then
+        if sudo service $OVSC stop 2>/dev/null; then
             echo "Stopped running controller"
         fi
         if [ -e /etc/init.d/$OVSC ]; then

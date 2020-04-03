@@ -56,13 +56,13 @@ class MultiGraph( object ):
         return self.node.items() if data else self.node.keys()
 
     def edges_iter( self, data=False, keys=False ):
-        "Iterator: return graph edges"
-        for src, entry in self.edge.iteritems():
-            for dst, keys in entry.iteritems():
+        "Iterator: return graph edges, optionally with data and keys"
+        for src, entry in self.edge.items():
+            for dst, entrykeys in entry.items():
                 if src > dst:
                     # Skip duplicate edges
                     continue
-                for k, attrs in keys.iteritems():
+                for k, attrs in entrykeys.items():
                     if data:
                         if keys:
                             yield( src, dst, k, attrs )
@@ -156,8 +156,7 @@ class Topo( object ):
         port1, port2 = self.addPort( node1, node2, port1, port2 )
         opts = dict( opts )
         opts.update( node1=node1, node2=node2, port1=port1, port2=port2 )
-        self.g.add_edge(node1, node2, key, opts )
-        return key
+        return self.g.add_edge(node1, node2, key, opts )
 
     def nodes( self, sort=True ):
         "Return nodes in graph"

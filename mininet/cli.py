@@ -29,6 +29,8 @@ from subprocess import call
 from cmd import Cmd
 from os import isatty
 from select import poll, POLLIN
+import select
+import errno
 import sys
 import time
 import os
@@ -44,7 +46,8 @@ class CLI( Cmd ):
 
     prompt = 'mininet> '
 
-    def __init__( self, mininet, stdin=sys.stdin, script=None ):
+    def __init__( self, mininet, stdin=sys.stdin, script=None,
+                  *args, **kwargs ):
         """Start and run interactive or batch mode CLI
            mininet: Mininet network object
            stdin: standard input for CLI
@@ -53,11 +56,10 @@ class CLI( Cmd ):
         # Local variable bindings for py command
         self.locals = { 'net': mininet }
         # Attempt to handle input
-        self.stdin = stdin
         self.inPoller = poll()
         self.inPoller.register( stdin )
         self.inputFile = script
-        Cmd.__init__( self )
+        Cmd.__init__( self, *args, stdin=stdin, **kwargs )
         info( '*** Starting CLI:\n' )
 
         if self.inputFile:
@@ -459,6 +461,13 @@ class CLI( Cmd ):
                 # it's possible to interrupt ourselves after we've
                 # read data but before it has been printed.
                 node.sendInt()
+            except select.error as e:
+                # pylint: disable=unpacking-non-sequence
+                errno_, errmsg = e.args
+                # pylint: enable=unpacking-non-sequence
+                if errno_ != errno.EINTR:
+                    error( "select.error: %d, %s" % (errno_, errmsg) )
+                    node.sendInt()
 
     def precmd( self, line ):
         "allow for comments in the cli"
